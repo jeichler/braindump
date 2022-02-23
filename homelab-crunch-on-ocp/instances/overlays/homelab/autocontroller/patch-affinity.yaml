@@ -1,0 +1,24 @@
+- op: replace
+  path: /spec/instances/0/affinity
+  value:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchLabels:
+              postgres-operator.crunchydata.com/cluster: autocontroller
+              postgres-operator.crunchydata.com/instance-set: pgha1
+- op: replace
+  path: /spec/proxy/pgBouncer/affinity
+  value:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchLabels:
+              postgres-operator.crunchydata.com/cluster: autocontroller
+              postgres-operator.crunchydata.com/instance-set: pgha1
