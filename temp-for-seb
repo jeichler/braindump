@@ -1,0 +1,93 @@
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-nginx
+  labels:
+    run: my-nginx
+spec:
+  ports:
+  - port: 443
+    protocol: TCP
+  selector:
+    run: my-nginx
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-nginx
+spec:
+  selector:
+    matchLabels:
+      run: my-nginx
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: my-nginx
+    spec:
+      containers:
+      - name: my-nginx
+        image: nginx
+        ports:
+        - containerPort: 443
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx
+          readOnly: true
+        - name: index-page
+          mountPath: /usr/share/local/nginx/html/index.html
+          readOnly: true
+          subPath: index.html
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: nginx-configmap
+      - name: index-page
+        configMap:
+          name: nginx-index
+---
+events {
+}
+
+http {
+  log_format main '$remote_addr - $remote_user [$time_local]  $status '
+  '"$request" $body_bytes_sent "$http_referer" '
+  '"$http_user_agent" "$http_x_forwarded_for"';
+  access_log /var/log/nginx/access.log main;
+  error_log  /var/log/nginx/error.log;
+
+  server {
+    listen 443 ssl;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    server_name external-service.apps.e5dd.e5dd.sandbox1228.opentlc.com;
+    ssl_certificate /etc/nginx-server-certs/tls.crt;
+    ssl_certificate_key /etc/nginx-server-certs/tls.key;
+    ssl_client_certificate /etc/nginx-ca-certs/ca-chain.cert.pem;
+    ssl_verify_client on;
+  }
+}
+
+
+index.html: |
+  <!DOCTYPE html>
+  <html>
+  <head>
+  <title>Istio Security Session</title>
+  <style>
+      body {
+          width: 35em;
+          margin: 0 auto;
+          font-family: Tahoma, Verdana, Arial, sans-serif;
+      }
+  </style>
+  </head>
+  <body>
+  <h1>Welcome to our external service!</h1>
+  <p>If you see this page, we successfully configured everything.</p>
+  <p>TLS origination and client certificate presentation.</p>
+  </body>
+  </html>
