@@ -1,0 +1,115 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: project-one
+  namespace: <ns-where-ingress-gw-lives>
+spec:
+  host: project-one.apps.north.ocp4.lab-janine.de
+  to:
+    kind: Service
+    name: istio-ingressgateway
+    weight: 100
+  port:
+    targetPort: https
+  tls:
+    termination: passthrough
+  wildcardPolicy: None
+---
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: project-one
+  namespace: <ns-where-ingress-gw-lives>
+spec:
+  host: project-two.apps.north.ocp4.lab-janine.de
+  to:
+    kind: Service
+    name: istio-ingressgateway
+    weight: 100
+  port:
+    targetPort: https
+  tls:
+    termination: passthrough
+  wildcardPolicy: None
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: project-one
+  namespace: <ns-where-ingress-gw-lives>
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - hosts:
+        - 'project-one.apps.north.ocp4.lab-janine.de'
+      port:
+        name: https
+        number: 8443
+        protocol: HTTPS
+      tls:
+        credentialName: project-one # created via cert-manager in my case
+        mode: SIMPLE
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: project-two
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - hosts:
+        - 'project-two.apps.north.ocp4.lab-janine.de'
+      port:
+        name: https
+        number: 8443
+        protocol: HTTPS
+      tls:
+        credentialName: project-two # created via cert-manager in my case
+        mode: SIMPLE
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: project-one
+  namespace: bookinfo
+spec:
+  gateways:
+    - istio-system/project-one
+  hosts:
+    - project-one.apps.north.ocp4.lab-janine.de
+  http:
+    - match:
+        - uri:
+            exact: /productpage
+        - uri:
+            prefix: /static
+        - uri:
+            exact: /login
+        - uri:
+            exact: /logout
+        - uri:
+            prefix: /api/v1/products
+      route:
+        - destination:
+            host: productpage
+            port:
+              number: 9080
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: project-two
+  namespace: bookinfo
+spec:
+  gateways:
+    - istio-system/project-two
+  hosts:
+    - project-two.apps.north.ocp4.lab-janine.de
+  http:
+    - route:
+        - destination:
+            host: api-endpoint
+            port:
+              number: 9080
